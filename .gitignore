@@ -1,0 +1,15 @@
+*.db
+.idea/
+__pycache__/
+*.swp
+tokens/
+smartContracts/
+*.sh
+system.db
+config.ini
+config.py
+*.log
+py3/
+__pycache__/
+*.pyc
+.vscode/

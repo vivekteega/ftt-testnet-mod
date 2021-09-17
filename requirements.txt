@@ -1,0 +1,17 @@
+arrow==1.1.0
+bidict==0.21.2
+certifi==2021.5.30
+cffi==1.14.5
+chardet==4.0.0
+greenlet==1.1.0
+idna==2.10
+pybtc==2.0.9
+pycparser==2.20
+python-dateutil==2.8.1
+python-engineio==3.14.2
+python-socketio==4.6.1
+requests==2.25.0
+secp256k1==0.13.2
+six==1.16.0
+SQLAlchemy==1.4.18
+urllib3==1.26.5

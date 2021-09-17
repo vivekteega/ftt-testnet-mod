@@ -1,0 +1,1 @@
+committeeAddressList = [<committeeAddress>]
