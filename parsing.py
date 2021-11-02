@@ -68,11 +68,9 @@ def isSmartContractPay(text):
     wordlist = text.split(' ')
     if len(wordlist) != 2:
         return False
-    smartContractTrigger = re.findall(
-        r"smartContractTrigger:'.*'", text)[0].split('smartContractTrigger:')[1]
+    smartContractTrigger = re.findall(r"smartContractTrigger:'.*'", text)[0].split('smartContractTrigger:')[1]
     smartContractTrigger = smartContractTrigger[1:-1]
-    smartContractName = re.findall(
-        r"smartContractName:.*@", text)[0].split('smartContractName:')[1]
+    smartContractName = re.findall(r"smartContractName:.*@", text)[0].split('smartContractName:')[1]
     smartContractName = smartContractName[:-1]
 
     if smartContractTrigger and smartContractName:
@@ -316,6 +314,11 @@ def extractContractConditions(text, contracttype, blocktime, marker=None):
                 searchResult = pattern.search(rule).group(0)
                 price = searchResult.split(marker)[0]
                 extractedRules['price'] = price
+            elif rule[:9] == 'priceType':
+                pattern = re.compile('[^priceType\s*=\s*].*')
+                searchResult = pattern.search(rule).group(0)
+                priceType = searchResult.split(marker)[0]
+                extractedRules['priceType'] = priceType
             # else:
             #    pdb.set_trace()
 
@@ -424,7 +427,6 @@ def parse_flodata(string, blockinfo, netvariable):
         if word.endswith('@') and len(word) != 1:
             atList.append(word)
 
-
     if len(starList) != 1 or starList[0] not in ['one-time-event*', 'continuous-event*']:
         parsed_data = {'type': 'noise'}
     else:
@@ -501,13 +503,14 @@ def parse_flodata(string, blockinfo, netvariable):
         elif incorporation and not transfer:
             contracttype = extractContractType(cleanstring)
             contractaddress = extractAddress(nospacestring)
-
+            
             if contracttype == 'one-time-event*' and len(hashList) == 1:
                 contractconditions = extractContractConditions(cleanstring, contracttype, blocktime=blockinfo['time'], marker=hashList[0][:-1])
             elif contracttype == 'continuous-event*':
                 contractconditions = extractContractConditions(cleanstring, contracttype, blocktime=blockinfo['time'])
             else:
                 parsed_data = {'type': 'noise'}
+                return parsed_data
 
             if config['DEFAULT']['NET'] == 'mainnet' and blockinfo['height'] < 3454510:
                 if None not in [contracttype, contractconditions]:
@@ -524,7 +527,11 @@ def parse_flodata(string, blockinfo, netvariable):
                                    'contractAddress': contractaddress[:-1], 'flodata': string,
                                    'contractConditions': contractconditions}
                 elif None not in [contracttype, contractaddress, contractconditions] and contracttype[:-1] == 'continuous-event':
-                    parsed_data = {'type': 'smartContractIncorporation', 'contractType': contracttype[:-1], 'contractName': atList[0][:-1],
+                    if contractconditions['subtype'] == 'tokenswap' and ('priceType' not in contractconditions):
+                        parsed_data = {'type': 'noise'}
+                        return parsed_data
+                    else:
+                        parsed_data = {'type': 'smartContractIncorporation', 'contractType': contracttype[:-1], 'contractName': atList[0][:-1],
                                    'contractAddress': contractaddress[:-1], 'flodata': string,
                                    'contractConditions': contractconditions}
                 else:
@@ -532,6 +539,12 @@ def parse_flodata(string, blockinfo, netvariable):
 
         # todo Rule 35 - if it is not incorporation and it is transfer, then extract smart contract amount to be locked and userPreference. If any of them is missing, then reject
         elif not incorporation and transfer:
+            pdb.set_trace()
+            # todo - Temporary check for transaction 22196cc761043b96a06fcfe5e58af2dafb90c7d222dcb909b537f7ee6715f0bd on testnet , figure out an elegant way of doing this 
+            if len(hashList) == 0:
+                parsed_data = {'type': 'noise'}
+                return parsed_data
+
             # We are at the send/transfer of smart contract
             amount = extractAmount(cleanstring, hashList[0][:-1])
             userChoice = extractUserchoice(cleanstring)
@@ -546,7 +559,7 @@ def parse_flodata(string, blockinfo, netvariable):
             else:
                 parsed_data = {'type': 'noise'}
 
-        elif isDeposit:
+        elif deposit:
             # Figure out amount of token to be submitted
             amount = extractSubmitAmount(cleanstring_split[0], hashList[0][:-1])
             # ''         name of token = hashList[0]
@@ -554,7 +567,7 @@ def parse_flodata(string, blockinfo, netvariable):
             # ''         FLO address of the Smart Contract
             # ''         Submit conditions
             deposit_conditions = extractDepositConditions(cleanstring, blocktime=blockinfo['time'])
-            if None not in [submit_conditions]:
+            if None not in [deposit_conditions]:
                 parsed_data = {'type': 'smartContractDeposit',
                                'tokenIdentification': hashList[0][:-1], 'contractName': atList[0][:-1], 'flodata': string,
                                'depositConditions': deposit_conditions}
@@ -567,8 +580,7 @@ def parse_flodata(string, blockinfo, netvariable):
             # todo Rule 37 - Extract the trigger condition given by the committee. If its missing, reject
             triggerCondition = extractTriggerCondition(cleanstring)
             if triggerCondition is not None:
-                parsed_data = {'type': 'smartContractPays',
-                               'contractName': atList[0][:-1], 'triggerCondition': triggerCondition.group().strip()[1:-1]}
+                parsed_data = {'type': 'smartContractPays', 'contractName': atList[0][:-1], 'triggerCondition': triggerCondition.group().strip()[1:-1]}
             else:
                 parsed_data = {'type': 'noise'}
         else:
