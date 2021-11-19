@@ -103,6 +103,7 @@ def extractAmount(text, marker):
 def extractSubmitAmount(text, marker):
     count = 0
     returnval = None
+    text = text.split('deposit-conditions')[0]
     splitText = text.split(' ')
 
     for word in splitText:
@@ -112,7 +113,7 @@ def extractSubmitAmount(text, marker):
             count = count + 1
             returnval = float(word)
         except ValueError:
-            pass
+            continue
 
         if count > 1:
             return 'Too many'
@@ -291,14 +292,15 @@ def extractContractConditions(text, contracttype, blocktime, marker=None):
     elif contracttype == 'continuous-event*':
         extractedRules = {}
         for rule in rulelist:
+            print(rule)
             if rule == '':
                 continue
             elif rule[:7] == 'subtype':
-                subtype = rule[8:]
-                #pattern = re.compile('[^subtype\s*=\s*].*')
-                #searchResult = pattern.search(rule).group(0)
-                #contractamount = searchResult.split(marker)[0]
-                extractedRules['subtype'] = subtype
+                # todo : recheck the regular expression for subtype, find an elegant version which covers all permutations and combinations
+                '''pattern = re.compile('[^subtype\s*=].*')
+                searchResult = pattern.search(rule).group(0)
+                subtype = searchResult.split(marker)[0]'''
+                extractedRules['subtype'] = rule.split('=')[1].strip()
             elif rule[:15] == 'accepting_token':
                 pattern = re.compile('[^accepting_token\s*=\s*].*')
                 searchResult = pattern.search(rule).group(0)
@@ -309,19 +311,22 @@ def extractContractConditions(text, contracttype, blocktime, marker=None):
                 searchResult = pattern.search(rule).group(0)
                 selling_token = searchResult.split(marker)[0]
                 extractedRules['selling_token'] = selling_token
+            elif rule[:9].lower() == 'pricetype':
+                pattern = re.compile('[^pricetype\s*=\s*].*')
+                searchResult = pattern.search(rule).group(0)
+                priceType = searchResult.split(marker)[0]
+                extractedRules['priceType'] = priceType
             elif rule[:5] == 'price':
                 pattern = re.compile('[^price\s*=\s*].*')
                 searchResult = pattern.search(rule).group(0)
                 price = searchResult.split(marker)[0]
-                extractedRules['price'] = price
-            elif rule[:9] == 'priceType':
-                pattern = re.compile('[^priceType\s*=\s*].*')
-                searchResult = pattern.search(rule).group(0)
-                priceType = searchResult.split(marker)[0]
-                extractedRules['priceType'] = priceType
+                if price[0]=="'" or price[0]=='"':
+                    price = price[1:]
+                if price[-1]=="'" or price[-1]=='"':
+                    price = price[:-1]
+                extractedRules['price'] = float(price)
             # else:
             #    pdb.set_trace()
-
         if len(extractedRules) > 1:
             return extractedRules
         else:
@@ -449,7 +454,6 @@ def parse_flodata(string, blockinfo, netvariable):
             starList.append(word)
     '''
 
-    #pdb.set_trace()
     print('')
     # todo Rule 24 - Reject the following conditions - a. number of # & number of @ is equal to 0 then reject
     # todo Rule 25 - If number of # or number of @ is greater than 1, reject
@@ -539,7 +543,6 @@ def parse_flodata(string, blockinfo, netvariable):
 
         # todo Rule 35 - if it is not incorporation and it is transfer, then extract smart contract amount to be locked and userPreference. If any of them is missing, then reject
         elif not incorporation and transfer:
-            pdb.set_trace()
             # todo - Temporary check for transaction 22196cc761043b96a06fcfe5e58af2dafb90c7d222dcb909b537f7ee6715f0bd on testnet , figure out an elegant way of doing this 
             if len(hashList) == 0:
                 parsed_data = {'type': 'noise'}
@@ -561,7 +564,10 @@ def parse_flodata(string, blockinfo, netvariable):
 
         elif deposit:
             # Figure out amount of token to be submitted
-            amount = extractSubmitAmount(cleanstring_split[0], hashList[0][:-1])
+            for word in cleanstring_split[0].split(' '):
+                if word.endswith('#') and len(word) != 1:
+                    hashList.append(word)
+            depositAmount = extractSubmitAmount(cleanstring_split[0], hashList[0][:-1])
             # ''         name of token = hashList[0]
             # ''         name of Smart Contract = atList[0]
             # ''         FLO address of the Smart Contract
@@ -569,7 +575,7 @@ def parse_flodata(string, blockinfo, netvariable):
             deposit_conditions = extractDepositConditions(cleanstring, blocktime=blockinfo['time'])
             if None not in [deposit_conditions]:
                 parsed_data = {'type': 'smartContractDeposit',
-                               'tokenIdentification': hashList[0][:-1], 'contractName': atList[0][:-1], 'flodata': string,
+                               'tokenIdentification': hashList[0][:-1], 'depositAmount': depositAmount, 'contractName': atList[0][:-1], 'flodata': string,
                                'depositConditions': deposit_conditions}
             else:
                 parsed_data = {'type': 'noise'}

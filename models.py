@@ -5,6 +5,7 @@ Base = declarative_base()
 ContractBase = declarative_base()
 SystemBase = declarative_base()
 LatestCacheBase = declarative_base()
+ContinuosContractBase = declarative_base()
 
 
 class ActiveTable(Base):
@@ -222,3 +223,55 @@ class LatestBlocks(LatestCacheBase):
     blockNumber = Column('blockNumber', String)
     blockHash = Column('blockHash', String)
     jsonData = Column('jsonData', String)
+
+
+class ContractStructure1(ContinuosContractBase):
+    __tablename__ = "contractstructure"
+
+    id = Column('id', Integer, primary_key=True)
+    attribute = Column('attribute', String)
+    index = Column('index', Integer)
+    value = Column('value', String)
+
+
+class ContractParticipants1(ContinuosContractBase):
+    __tablename__ = "contractparticipants"
+
+    id = Column('id', Integer, primary_key=True)
+    participantAddress = Column('participantAddress', String)
+    tokenAmount = Column('tokenAmount', Float)
+    userChoice = Column('userChoice', String)
+    transactionHash = Column('transactionHash', String)
+    blockNumber = Column('blockNumber', Integer)
+    blockHash = Column('blockHash', String)
+    winningAmount = Column('winningAmount', Float)
+
+
+class ContractDeposits1(ContinuosContractBase):
+    __tablename__ = "contractdeposits"
+
+    id = Column('id', Integer, primary_key=True)
+    depositorAddress = Column('depositorAddress', String)
+    depositAmount = Column('depositAmount', Float)
+    expiryTime = Column('expiryTime', String)
+    transactionHash = Column('transactionHash', String)
+    blockNumber = Column('blockNumber', Integer)
+    blockHash = Column('blockHash', String)
+
+
+class ContractTransactionHistory1(ContinuosContractBase):
+    __tablename__ = "contractTransactionHistory"
+
+    primary_key = Column('id', Integer, primary_key=True)
+    transactionType = Column('transactionType', String)
+    transactionSubType = Column('transactionSubType', String)
+    sourceFloAddress = Column('sourceFloAddress', String)
+    destFloAddress = Column('destFloAddress', String)
+    transferAmount = Column('transferAmount', Float)
+    blockNumber = Column('blockNumber', Integer)
+    blockHash = Column('blockHash', String)
+    time = Column('time', Integer)
+    transactionHash = Column('transactionHash', String)
+    blockchainReference = Column('blockchainReference', String)
+    jsonData = Column('jsonData', String)
+    parsedFloData = Column('parsedFloData', String)
